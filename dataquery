@@ -1,0 +1,10 @@
+"Query for battery data of Y02E60/10"
+mariadb -u kerlj patstat -e 'SELECT * FROM tls224_appln_cpc AS t1 
+LEFT JOIN tls211_pat_publn AS t2 ON t1.appln_id = t2.appln_id 
+LEFT JOIN tls212_citation AS t3 ON t2.pat_publn_id = t3.pat_publn_id 
+LEFT JOIN tls211_pat_publn AS t4 ON t3.cited_pat_publn_id = t4.pat_publn_id 
+LEFT JOIN tls224_appln_cpc AS t5 ON t4.appln_id = t5.appln_id 
+WHERE t1.cpc_class_symbol = "Y02E  60/10"' > /home/kerlj/Citations_Y02E60/10.csv
+
+
+""
