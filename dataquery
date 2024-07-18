@@ -1,10 +1,16 @@
-"Query for battery data of Y02E60/10"
-mariadb -u kerlj patstat -e 'SELECT * FROM tls224_appln_cpc AS t1 
-LEFT JOIN tls211_pat_publn AS t2 ON t1.appln_id = t2.appln_id 
-LEFT JOIN tls212_citation AS t3 ON t2.pat_publn_id = t3.pat_publn_id 
-LEFT JOIN tls211_pat_publn AS t4 ON t3.cited_pat_publn_id = t4.pat_publn_id 
-LEFT JOIN tls224_appln_cpc AS t5 ON t4.appln_id = t5.appln_id 
-WHERE t1.cpc_class_symbol = "Y02E  60/10"' > /home/kerlj/Citations_Y02E60/10.csv
-
-
-""
+mariadb -u kerlj patstat -e 'SELECT 
+t1.appln_id, t1.cpc_class_symbol,
+t2.appln_id, t2.appln_filing_date, t2.granted,
+t3.pat_publn_id, t3.appln_id, t3.publn_date,
+t4.pat_publn_id, t4.cited_pat_publn_id,
+t5.pat_publn_id, t5.appln_id, t5.publn_date,
+t6.appln_id, t6.cpc_class_symbol,
+t7.appln_id, t7.appln_filing_date, t7.granted
+FROM tls224_appln_cpc AS t1 
+LEFT JOIN tls201_appln AS t2 ON t1.appln_id = t2.appln_id 
+LEFT JOIN tls211_pat_publn AS t3 ON t2.appln_id = t3.appln_id 
+LEFT JOIN tls212_citation AS t4 ON t3.pat_publn_id = t4.pat_publn_id 
+LEFT JOIN tls211_pat_publn AS t5 ON t4.cited_pat_publn_id = t5.pat_publn_id 
+LEFT JOIN tls224_appln_cpc AS t6 ON t5.appln_id = t6.appln_id 
+LEFT JOIN tls201_appln AS t7 ON t6.appln_id = t7.appln_id
+WHERE t1.cpc_class_symbol = "Y02E  60/10"' > /home/kerlj/Citations_Y02E6010.csv
