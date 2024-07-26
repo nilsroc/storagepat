@@ -1,2 +1,98 @@
-import pandas as pd
+import mariadb
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import networkx as nx
+
+connection = mariadb.connect(user='kerlj', host='localhost', database='patstat')
+
+codes={'Y02E  60/10'}
+
+citframe=pd.DataFrame()
+
+for cpc in codes:
+    statement = f'''
+    SELECT t1.appln_id, t1.cpc_class_symbol, 
+           t2.appln_id, t2.appln_filing_date, t2.granted,
+           t3.pat_publn_id, t3.appln_id, t3.publn_date,
+           t4.pat_publn_id, t4.cited_pat_publn_id,
+           t5.pat_publn_id, t5.appln_id, t5.publn_date,
+           t6.appln_id, t6.cpc_class_symbol,
+           t7.appln_id, t7.appln_filing_date, t7.granted
+    FROM tls224_appln_cpc AS t1 
+    LEFT JOIN tls201_appln AS t2 ON t1.appln_id = t2.appln_id 
+    LEFT JOIN tls211_pat_publn AS t3 ON t2.appln_id = t3.appln_id 
+    LEFT JOIN tls212_citation AS t4 ON t3.pat_publn_id = t4.pat_publn_id 
+    LEFT JOIN tls211_pat_publn AS t5 ON t4.cited_pat_publn_id = t5.pat_publn_id 
+    LEFT JOIN tls224_appln_cpc AS t6 ON t5.appln_id = t6.appln_id 
+    LEFT JOIN tls201_appln AS t7 ON t6.appln_id = t7.appln_id
+    WHERE t1.cpc_class_symbol = '{cpc}'
+    '''
+    df = pd.read_sql(statement, connection)
+    citframe = pd.concat([citframe, df], ignore_index=True)
+    
+print(citframe)
+citframe = df[(df['granted'] == 'Y') & (df['granted.1'] == 'Y')]
+# Load the CSV file
+
+# Function to create the citation vector
+def create_citation_vector(citframe, end_year):
+    # Filter citations from 1950 to the specified end year
+    filtered_citframe = citframe[
+        (pd.to_datetime(citframe['appln_filing_date'], errors='coerce', format='%Y-%m-%d').dt.year >= 1950) & 
+        (pd.to_datetime(citframe['appln_filing_date'], errors='coerce', format='%Y-%m-%d').dt.year <= end_year)
+    ]
+    
+    # Extract relevant information for the vector
+    citations = filtered_citframe['cpc_class_symbol.1'].dropna().str[:2].value_counts().sort_index()
+    
+    return citations
+
+# Set the end year for citations
+end_year = 2020  # You can manually adjust the end year here
+
+# Create the citation vector
+citations = create_citation_vector(citframe, end_year)
+
+# Example vector (similar to the given one)
+citation_vector = pd.Series(citations)
+
+# Calculate the sum of values in the right column
+total_sum = citation_vector.sum()
+
+# Create the network
+G = nx.DiGraph()
+
+# Central node for citations
+G.add_node('Y02E60/10', type='central')
+
+# Nodes for the codes and edges from 'Citations' to the codes
+for code, count in citation_vector.items():
+    G.add_node(code, type='code')
+    # Set the edge weight as a proportion of the total sum
+    normalized_weight = count / total_sum
+    G.add_edge('Y02E60/10', code, weight=normalized_weight)
+
+# Layout for the display
+pos = nx.spring_layout(G)
+
+# Display the network
+plt.figure(figsize=(10, 8))
+
+# Draw nodes
+nx.draw_networkx_nodes(G, pos, node_color='lightblue', node_size=150)
+
+# Draw node labels (with smaller font size)
+nx.draw_networkx_labels(G, pos, font_size=10, font_family='sans-serif')
+
+# Draw edges (with adjusted width and style based on the weight)
+edges = G.edges()
+weights = [G[u][v]['weight'] for u, v in edges]
+nx.draw_networkx_edges(G, pos, edgelist=edges, width=[w * 2 for w in weights], edge_color='gray', arrowstyle='-|>')
+
+# Turn off the axis and set the title
+plt.axis('off')
+plt.title('Citation Network')
+
+# Show the plot
+plt.show()
