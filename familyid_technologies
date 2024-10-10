@@ -1,47 +1,31 @@
 import pandas as pd
 
-# Liste der Dateien
-files = [
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1907.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1908.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1908-2.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1909.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1910.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1911.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1911-2.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1912.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1912-2.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1913.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1914.csv',
-    '/Users/janniskerl/Downloads/Espacenet-Suchergebnis_20241001_1914-2.csv'
-]
+#List of files, downloaded from https://www.epo.org/en/searching-for-patents/technology-platforms/clean-energy/energy-storage
+files = []
 
-# Liste für alle DataFrames
+# List for dfs
 dfs = []
 
-# Gewünschte Spalten
+# Wanted rows
 columns = ['No', 'IPC', 'CPC', 'Früheste Priorität', 'Familiennummer']
 
 for file in files:
-    # Einlesen der CSV-Dateien (Beachte die Trennung durch "")
+    # read in files, including separators
     df = pd.read_csv(file, header=7, sep=';', quotechar='"')
     
-    # Nur die relevanten Spalten extrahieren
+    # Only take in relevant columns
     df_subset = df[['No', 'IPC', 'CPC', 'Früheste Priorität', 'Familiennummer']]
     
-    # Jahr der frühesten Priorität extrahieren
+    # Extract year
     df_subset['Früheste Priorität'] = pd.to_datetime(df_subset['Früheste Priorität'], errors='coerce').dt.year
     
-    # DataFrame zur Liste hinzufügen
     dfs.append(df_subset)
 
-# Alle DataFrames zusammenfügen
+# Concatenate dfs
 merged_df = pd.concat(dfs, ignore_index=True)
 
-# Duplikate basierend auf der Familiennummer entfernen
+# Remove duplicates
 cleaned_df = merged_df.drop_duplicates(subset=['Familiennummer'])
 print(len(cleaned_df['Familiennummer'].unique()))
-# Ergebnis als CSV speichern
-cleaned_df.to_csv('/Users/janniskerl/LithiumNickelCobaltOxide_data.csv', index=False)
-
-print("Die Daten wurden erfolgreich zusammengeführt und bereinigt!")
+# Save als csv, add technology name manually
+cleaned_df.to_csv('{Technology}.csv', index=False)
