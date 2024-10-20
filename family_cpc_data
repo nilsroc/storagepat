@@ -1,0 +1,89 @@
+import pandas as pd
+import mariadb
+
+# Connect to database
+connection = mariadb.connect(
+    user='kerlj',
+    host='localhost',
+    database='patstat'
+)
+cursor = connection.cursor()
+
+# Batch-size
+batch_size = 1000
+
+
+cpc_depth = 4 
+
+# Select all distinct family ids
+cursor.execute("SELECT DISTINCT docdb_family_id FROM tls225_docdb_fam_cpc;")
+all_family_ids = [row[0] for row in cursor.fetchall()]
+
+# Dict for saving counts
+class_year_count = {}
+
+def get_cpc_class(cpc_class_symbol, depth):
+    return cpc_class_symbol[:depth]  
+
+# Process family ids in batches
+for i in range(0, len(all_family_ids), batch_size):
+    batch_ids = all_family_ids[i:i + batch_size]
+    
+    family_id_str = ','.join(map(str, batch_ids))
+    
+    query = f"""
+    SELECT a.docdb_family_id, 
+           a.cpc_class_symbol, 
+           MIN(b.appln_id) AS appln_id, 
+           MIN(b.earliest_filing_year) AS earliest_filing_year
+    FROM tls225_docdb_fam_cpc AS a 
+    LEFT JOIN tls201_appln AS b 
+    ON a.docdb_family_id = b.docdb_family_id 
+    WHERE a.docdb_family_id IN ({family_id_str})
+    GROUP BY a.docdb_family_id, a.cpc_class_symbol;
+    """
+    
+    cursor.execute(query)
+    results = cursor.fetchall()
+    
+    batch_data = {}
+    
+    for row in results:
+        docdb_family_id, cpc_class_symbol, appln_id, earliest_filing_year = row
+        
+        cpc_class = get_cpc_class(cpc_class_symbol, depth=cpc_depth)
+        
+        # Ignore Y-classes/tags
+        if cpc_class.startswith('Y'):
+            continue
+        
+        if docdb_family_id not in batch_data:
+            batch_data[docdb_family_id] = []
+        batch_data[docdb_family_id].append((cpc_class, earliest_filing_year))
+    
+    for docdb_family_id, class_year_list in batch_data.items():
+        # Calculate length of unique classes
+        #unique_classes = set([c[0] for c in class_year_list])
+        #class_count = len(unique_classes)
+        class_count = len(class_year_list)
+        
+        for cpc_class, earliest_filing_year in class_year_list:
+            normalized_value = 1 / class_count
+            
+            # Combination of class and year
+            class_year = (cpc_class, earliest_filing_year)
+            
+            if class_year in class_year_count:
+                class_year_count[class_year] += normalized_value
+            else:
+                class_year_count[class_year] = normalized_value
+
+cursor.close()
+connection.close()
+
+df = pd.DataFrame(
+    [(k[0], k[1], v) for k, v in class_year_count.items()],
+    columns=['Class', 'Year', 'Normalized_Count']
+)
+
+df.to_csv(f'class_year_normalized_counts_{cpc_depth}_digits.csv', index=False)
