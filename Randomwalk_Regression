@@ -855,7 +855,7 @@ for tech in technologies_iter:
     plt.xticks(ticks=range(actual_years.min(),future_years.max()+1,5))
     plt.legend()
     plt.grid(True)
-    plt.savefig(f'ForecastComparison_{tech}_{cutoff_training}.png', dpi=300)
+    plt.savefig(f'ForecastComparison_RandomWalk_{tech}_{cutoff_training}.png', dpi=300)
     plt.close()
 
     # Forecast to 2030 for RandomWalk
