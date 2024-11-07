@@ -709,6 +709,7 @@ forecasted_df.reset_index(drop=True, inplace=True)
 #forecasted_df.to_csv('Forecasts_4digit_cpc.csv')
 print(forecasted_df)
 all_technology_data.to_csv('alltechnology_data.csv')
+arima_results_df=[]
 "Network and ARIMA time series regression and comparison"
 for tech in technologies_iter:
     # Filter data for the current technology (select by first index level)
@@ -804,6 +805,24 @@ for tech in technologies_iter:
 
     # Display ARIMA model summary
     print(f"ARIMA model summary for {tech}:\n", model_fit.summary())
+    params = model_fit.params_  # Modellparameter
+    stderr = model_fit.std_err_  # Standardfehler der Schätzwerte
+    pvalues = model_fit.pvalues_  # p-Werte für die Tests der Hypothesen
+    
+    # Extrahiere die Modellordnung (p, d, q)
+    order = model_fit.order  # (p, d, q)
+    seasonal_order = model_fit.seasonal_order  # (P, D, Q, m), falls saisonal
+
+    # Erstelle ein DataFrame für die aktuellen Parameter und ihre Werte
+    tech_results_df = pd.DataFrame({
+        'Parameter': ['Intercept', 'AR1', 'MA1'],  # Beispiel für Parameter
+        'Estimate': params[:3],  # Nimm die ersten 3 Parameter (für AR, MA und Intercept)
+        'Std Error': stderr[:3],  # Entsprechend für Std Error
+        'p-value': pvalues[:3],  # Entsprechend für p-value
+        'Technology': tech,  # Füge die Technologie als Spalte hinzu
+        'ARIMA Order': [order] * 3  # Wiederhole die Order für jedes Parameter
+    })
+    arima_results_df.append(tech_results_df)
     # Get the fitted values
     fitted_values = model_fit.predict_in_sample()
     # Plot the actual data and the fitted values with the ARIMA model
@@ -1001,3 +1020,13 @@ for tech, forecast_sum in unconditional_network_forecast_2030_sums:
 print("\nSum of unconditional_network_forecast_2030 for each technology (panel estimated):")
 for tech, forecast_sum in unconditional_panel_network_forecast_2030_sums:
     print(f"{tech}: {forecast_sum:.4f}")
+final_results_df = pd.concat(all_results, ignore_index=True)
+
+# Optional: Setze den Parameter als Index (falls gewünscht)
+final_results_df.set_index(['Technology', 'Parameter'], inplace=True)
+
+# Ausgabe des finalen DataFrames
+print(final_results_df)
+
+# Optional: Speichere das Ergebnis in einer CSV-Datei
+final_results_df.to_csv('arima_technologies_results_with_order.csv')
