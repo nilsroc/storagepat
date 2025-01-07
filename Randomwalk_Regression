@@ -132,7 +132,7 @@ for technology, file_path in technologies.items():
 
     # Connect to the MariaDB database
     connection = mariadb.connect(
-        user='kerlj',       # Your username
+        user='',       # Your username
         host='localhost',
         database='patstat'
     )
